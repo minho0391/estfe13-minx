@@ -1,6 +1,7 @@
 import { Box, TextField, Divider, ListItem, ListItemText, Stack, Button } from "@mui/material";
-import { db } from "../firebase";
+import { db, storageService } from "../firebase";
 import { doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { ref, deleteObject } from "firebase/storage";
 import { useState } from "react";
 
 export default function Comment({ item, isShown }) {
@@ -9,7 +10,17 @@ export default function Comment({ item, isShown }) {
 
   const handleDelete = async () => {
     if (!window.confirm("정말 삭제할까요?")) return;
-    await deleteDoc(doc(db, "comments", item.id));
+    try {
+      await deleteDoc(doc(db, "comments", item.id));
+      if (item.image) {
+        const storage = storageService;
+        const storageRef = ref(storage, item.image);
+        await deleteObject(storageRef);
+      }
+    } catch (error) {
+      console.error("삭제오류", error);
+      alert("삭제중 오류가 발생했습니다.");
+    }
   };
   const toggleEditMode = () => {
     setEdit(prev => !prev);
@@ -46,7 +57,7 @@ export default function Comment({ item, isShown }) {
           />
           <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
             <Button sx={{ mt: 2 }} type="submit" variant="contained" size="small">
-              수정
+              글쓰기
             </Button>
             <Button variant="outlined" size="small" onClick={toggleEditMode}>
               취소
@@ -59,6 +70,22 @@ export default function Comment({ item, isShown }) {
             primary={item.comment}
             secondary={item.date?.toDate ? item.date.toDate().toLocaleString() : "작성시간 없음"}
           />
+          {item.image && (
+            <Box sx={{ marginRight: "5px", display: "flex", alignItems: "center", gap: 1 }}>
+              <Box
+                component="img"
+                src={item.image}
+                alt="미리보기"
+                sx={{
+                  width: 50,
+                  height: 50,
+                  objectFit: "cover",
+                  border: "1px solid #ddd",
+                  borderRadius: 3,
+                }}
+              ></Box>
+            </Box>
+          )}
           {isShown && (
             <Stack direction="row" spacing={1}>
               <Button variant="outlined" size="small" onClick={toggleEditMode}>
